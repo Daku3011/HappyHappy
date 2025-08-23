@@ -1,0 +1,46 @@
+﻿@{
+    ViewData["Title"] = "Enroll Face";
+}
+<h2>Enroll Face</h2>
+
+<label>Student ID:</label>
+<input id="sid" type="number" min="1" />
+<button id="start">Start Camera</button>
+<button id="snap">Capture Face</button>
+<button id="train">Train Model</button>
+
+<video id="video" width="360" height="270" autoplay playsinline></video>
+<canvas id="canvas" width="360" height="270" style="display:none;"></canvas>
+<p id="msg"></p>
+
+<script>
+    let stream;
+    document.getElementById('start').onclick = async () => {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      document.getElementById('video').srcObject = stream;
+    };
+
+    function takeShot() {
+      const v = document.getElementById('video');
+      const c = document.getElementById('canvas');
+      const ctx = c.getContext('2d');
+      ctx.drawImage(v, 0, 0, c.width, c.height);
+      return c.toDataURL('image/jpeg', 0.9);
+    }
+
+    document.getElementById('snap').onclick = async () => {
+      const sid = document.getElementById('sid').value;
+      if (!sid) { alert('enter student id'); return; }
+      const dataUrl = takeShot();
+      const fd = new FormData();
+      fd.append('studentId', sid);
+      fd.append('dataUrl', dataUrl);
+      const res = await fetch('/enroll/capture', { method: 'POST', body: fd });
+      document.getElementById('msg').innerText = await res.text();
+    };
+
+    document.getElementById('train').onclick = async () => {
+      const res = await fetch('/enroll/train', { method: 'POST' });
+      document.getElementById('msg').innerText = await res.text();
+    };
+</script>

@@ -1,0 +1,47 @@
+﻿@{
+    ViewData["Title"] = "Live Recognition";
+}
+<h2>Live Recognition</h2>
+
+<button id="start">Start Camera</button>
+<button id="stop">Stop</button>
+<p id="status"></p>
+<video id="video" width="360" height="270" autoplay playsinline></video>
+<canvas id="canvas" width="360" height="270" style="display:none;"></canvas>
+
+<script>
+    let stream, timer;
+
+    document.getElementById('start').onclick = async () => {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      document.getElementById('video').srcObject = stream;
+      timer = setInterval(tick, 1000); // send 1 frame/sec
+    };
+
+    document.getElementById('stop').onclick = () => {
+      if (timer) clearInterval(timer);
+      if (stream) stream.getTracks().forEach(t=>t.stop());
+    };
+
+    function getFrame() {
+      const v = document.getElementById('video');
+      const c = document.getElementById('canvas');
+      const ctx = c.getContext('2d');
+      ctx.drawImage(v, 0, 0, c.width, c.height);
+      return c.toDataURL('image/jpeg', 0.8);
+    }
+
+    async function tick() {
+      const dataUrl = getFrame();
+      const fd = new FormData();
+      fd.append('dataUrl', dataUrl);
+      const res = await fetch('/recognize/scan', { method:'POST', body: fd });
+      const j = await res.json();
+      const p = document.getElementById('status');
+      if (j.matched) {
+        p.innerText = `✔ ${j.name} (ID: ${j.studentId}) marked${j.already ? ' (already today)' : ''}. Confidence: ${j.conf.toFixed(2)}`;
+      } else {
+        p.innerText = `… scanning (${j.message ?? 'no match'})`;
+      }
+    }
+</script>
